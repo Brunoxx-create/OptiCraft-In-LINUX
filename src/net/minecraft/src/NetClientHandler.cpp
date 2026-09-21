@@ -502,7 +502,7 @@ void NetClientHandler::handleEntityTeleport(Packet34EntityTeleport* packet)
     float yaw = (float)(packet->yaw * 360) / 256.0f;
     float pitch = (float)(packet->pitch * 360) / 256.0f;
     
-    entity->setPositionAndRotation2(posX, posY, posZ, yaw, pitch, 3);
+    worldClient->applyNetworkPosition(entity, posX, posY, posZ, yaw, pitch);
 }
 
 void NetClientHandler::handleEntityMovement(Packet30Entity* packet)
@@ -525,7 +525,7 @@ void NetClientHandler::handleEntityMovement(Packet30Entity* packet)
     float yaw = packet->rotating ? (float)(packet->yaw * 360) / 256.0f : entity->rotationYaw;
     float pitch = packet->rotating ? (float)(packet->pitch * 360) / 256.0f : entity->rotationPitch;
     
-    entity->setPositionAndRotation2(posX, posY, posZ, yaw, pitch, 3);
+    worldClient->applyNetworkPosition(entity, posX, posY, posZ, yaw, pitch);
 }
 
 void NetClientHandler::handleEntityHeadRotation(Packet35EntityHeadRotation* packet)
@@ -615,7 +615,7 @@ void NetClientHandler::handleMultiBlockChange(Packet52MultiBlockChange* packet)
     const int_t baseX = JavaArithmetic::intMul(packet->xPosition, 16);
     const int_t baseZ = JavaArithmetic::intMul(packet->zPosition, 16);
 
-#ifdef WII_PLATFORM
+#if PLATFORM_MP_DEFERRED_CHUNKS
     const bool keepChunk = worldClient->shouldKeepChunk(packet->xPosition, packet->zPosition);
 #endif
 
@@ -633,7 +633,7 @@ void NetClientHandler::handleMultiBlockChange(Packet52MultiBlockChange* packet)
         const int_t blockId = (blockData & 0x0fff) >> 4;
         const int_t metadata = blockData & 0xf;
 
-#ifdef WII_PLATFORM
+#if PLATFORM_MP_DEFERRED_CHUNKS
         worldClient->deferBlockChange(JavaArithmetic::intAdd(baseX, localX), y, JavaArithmetic::intAdd(baseZ, localZ), blockId, metadata);
         if (!keepChunk)
             continue;
@@ -646,14 +646,22 @@ void NetClientHandler::handleMultiBlockChange(Packet52MultiBlockChange* packet)
 void NetClientHandler::handleMapChunk(Packet51MapChunk* packet)
 {
     mapChunkCount++;
-#ifdef WII_PLATFORM
+#if PLATFORM_MP_DEFERRED_CHUNKS
     // Keep the initialize packet plus subsequent section deltas compressed for
-    // bounded client caches. This lets an evicted 1.2.5 column be reconstructed
+    // bounded console caches. This lets an evicted 1.2.5 column be reconstructed
     // without asking the server to resend a chunk it still considers loaded.
+    // Move every payload directly into the cache. Nearby data is inflated first,
+    // so it can still be applied below without retaining a second compressed copy.
+    const bool keepChunk = worldClient->shouldKeepChunk(packet->xCh, packet->zCh);
+    if (keepChunk && !packet->ensureDecompressed())
+    {
+        netManager->networkShutdown("disconnect.genericReason", {"Invalid compressed chunk data"});
+        return;
+    }
     worldClient->cacheCompressedChunk(
         packet->xCh, packet->zCh, packet->includeInitialize,
-        packet->yChMin, packet->yChMax, packet->copyCompressedData());
-    if (!worldClient->shouldKeepChunk(packet->xCh, packet->zCh))
+        packet->yChMin, packet->yChMax, packet->takeCompressedData());
+    if (!keepChunk)
         return;
 #endif
 
@@ -696,7 +704,7 @@ void NetClientHandler::handleMapChunk(Packet51MapChunk* packet)
 
 void NetClientHandler::handleBlockChange(Packet53BlockChange* packet)
 {
-#ifdef WII_PLATFORM
+#if PLATFORM_MP_DEFERRED_CHUNKS
 	worldClient->deferBlockChange(packet->xPosition, packet->yPosition,
 		packet->zPosition, packet->type, packet->metadata);
 	if (!worldClient->shouldKeepChunk(JavaArithmetic::intShr(packet->xPosition, 4), JavaArithmetic::intShr(packet->zPosition, 4)))
@@ -1043,7 +1051,12 @@ Entity* NetClientHandler::getEntityByID(int entityId)
         return mc->thePlayer;
     }
     
-    return worldClient->getEntityByID(entityId);
+    Entity *entity = worldClient->getEntityByID(entityId);
+#if PLATFORM_PS2
+    MC_LOG_TRACE("net.entity", "lookup id=%d found=%d dead=%d attached=%d\n",
+        entityId, entity != nullptr, entity != nullptr && entity->isDead, entity != nullptr && entity->addedToChunk);
+#endif
+    return entity;
 }
 
 void NetClientHandler::handleHealth(Packet8UpdateHealth* packet)
