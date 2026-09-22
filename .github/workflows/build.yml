@@ -73,7 +73,7 @@ jobs:
           cp bin/ps2/usb/MCBETA/OptiCraft.elf dist/OptiCraft-ps2.elf
           tar -C dist -czf OptiCraft-ps2.tar.gz OptiCraft-ps2.elf
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: opticraft-ps2
           path: OptiCraft-ps2.tar.gz
@@ -124,7 +124,7 @@ jobs:
             cp bin/wii/sd/apps/OptiCraft/boot.dol dist/ || true
           tar -C dist -czf OptiCraft-wii.tar.gz .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: opticraft-wii
           path: OptiCraft-wii.tar.gz
