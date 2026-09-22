@@ -1,0 +1,130 @@
+name: Build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ── PlayStation 2 ─────────────────────────────────────────────────────
+  build-ps2:
+    name: PlayStation 2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        run: |
+          git init
+          git remote add origin ${{ github.server_url }}/${{ github.repository }}.git
+          git fetch --depth 1 origin ${{ github.sha }}
+          git checkout FETCH_HEAD
+
+      - name: Init required submodules
+        run: |
+          git submodule init external/zlib external/stb
+          git submodule update --depth 1 external/zlib external/stb
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Install ps2dev toolchain (precompiled)
+        run: |
+          sudo mkdir -p /usr/local/ps2dev
+          curl -fSL -o /tmp/ps2dev.tar.gz \
+            https://github.com/ps2dev/ps2dev/releases/download/latest/ps2dev-ubuntu-latest.tar.gz
+          sudo tar -xf /tmp/ps2dev.tar.gz --strip-components 1 -C /usr/local/ps2dev
+          rm -f /tmp/ps2dev.tar.gz
+
+      - name: Set environment
+        run: |
+          echo "PS2DEV=/usr/local/ps2dev" >> "$GITHUB_ENV"
+          echo "PS2SDK=/usr/local/ps2dev/ps2sdk" >> "$GITHUB_ENV"
+          echo "/usr/local/ps2dev/ee/bin" >> "$GITHUB_PATH"
+          echo "/usr/local/ps2dev/ps2sdk/bin" >> "$GITHUB_PATH"
+          echo "/usr/local/ps2dev/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        run: >
+          cmake -B build/ps2-release -G Ninja
+          -DCMAKE_TOOLCHAIN_FILE=cmake/ps2_toolchain.cmake
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_MAKE_PROGRAM=ninja
+          -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY
+          -DPLATFORM=PS2
+          -DPS2_ENABLE_SOUND=OFF
+          -DPS2_ENABLE_PERSPECTIVE_TEXTURES=ON
+          -DPS2_RENDER_STATS=OFF
+          -DPS2_ENABLE_VU1_TERRAIN=ON
+          -DMC_LOG_LEVEL=0
+
+      - name: Build
+        run: cmake --build build/ps2-release --parallel
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp bin/ps2/usb/MCBETA/OptiCraft.elf dist/OptiCraft-ps2.elf
+          tar -C dist -czf OptiCraft-ps2.tar.gz OptiCraft-ps2.elf
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opticraft-ps2
+          path: OptiCraft-ps2.tar.gz
+
+  # ── Nintendo Wii ──────────────────────────────────────────────────────
+  build-wii:
+    name: Nintendo Wii
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:latest
+    steps:
+      - name: Install build dependencies
+        run: apt-get update && apt-get install -y git cmake ninja-build
+
+      - name: Checkout
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git init
+          git remote add origin ${{ github.server_url }}/${{ github.repository }}.git
+          git fetch --depth 1 origin ${{ github.sha }}
+          git checkout FETCH_HEAD
+
+      - name: Init required submodules
+        run: |
+          git submodule init external/zlib external/stb
+          git submodule update --depth 1 external/zlib external/stb
+
+      - name: Configure
+        run: >
+          cmake -B build/wii-release -G Ninja
+          -DCMAKE_TOOLCHAIN_FILE=cmake/wii_toolchain.cmake
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_MAKE_PROGRAM=ninja
+          -DPLATFORM=WII
+          -DWII_BRINGUP=OFF
+          -DWII_ENABLE_SOUND=ON
+          -DWII_ENABLE_NETWORK=ON
+          -DCMAKE_CXX_FLAGS="-DHW_RVL -mrvl -mcpu=750 -meabi -mhard-float -I$GITHUB_WORKSPACE/src/net/minecraft/src"
+
+      - name: Build
+        run: cmake --build build/wii-release --parallel
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cp bin/wii/OptiCraft.elf dist/OptiCraft-wii.elf
+          [ -f bin/wii/sd/apps/OptiCraft/boot.dol ] && \
+            cp bin/wii/sd/apps/OptiCraft/boot.dol dist/ || true
+          tar -C dist -czf OptiCraft-wii.tar.gz .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opticraft-wii
+          path: OptiCraft-wii.tar.gz
