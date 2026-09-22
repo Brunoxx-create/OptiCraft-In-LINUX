@@ -106,8 +106,11 @@
 #include "platform/ExtendedProfiler.h"
 #if PLATFORM_FAST_BLOCK_COLLISIONS || PLATFORM_EARLY_COLLISION_EXIT || PLATFORM_FLOAT_COLLISION_SWEEP
 #include "platform/world/PlatformBlockCollisionSweeper.h"
-#include "platform/world/StreamingFrameBudget.h"
 #endif
+// PlatformStreamingFrameBudget/-Scope are used unconditionally below (the
+// lighting-update drain budget), not just under the block-collision profiles
+// above, so this include must not be gated behind that guard.
+#include "platform/world/StreamingFrameBudget.h"
 
 #if PLATFORM_BOUNDED_WORLD
 static int_t platformFindTopSpawnBlockY(World *world, int_t x, int_t z)

@@ -193,6 +193,10 @@ target_include_directories(OptiCraft PRIVATE
     "${CMAKE_SOURCE_DIR}/src"
     "${CMAKE_SOURCE_DIR}/src/pc"
     "${CMAKE_SOURCE_DIR}/src/wii"
+    # Same bare-filename #include pattern noted on the desktop target: without
+    # this the Wii CI job only worked because it injected the same path via
+    # -I on the command line.
+    "${CMAKE_SOURCE_DIR}/src/net/minecraft/src"
     "${CMAKE_SOURCE_DIR}/external/stb"
     "${CMAKE_SOURCE_DIR}/external/zlib/contrib/minizip"
     "${LIBOGC}/include"

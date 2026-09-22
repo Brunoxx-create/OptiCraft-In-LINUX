@@ -31,8 +31,8 @@ static std::string ToPath(const jstring &path)
 	static char buffer[PATH_MAX];
 	if (!::realpath(u8path.c_str(), buffer))
 		return u8path; // File probably doesn't exist yet, just use the path as-is
-	
-	return std::string(buffer);
+
+		return std::string(buffer);
 }
 
 static jstring FromPath(const std::string &path)
@@ -65,7 +65,7 @@ public:
 			return false;
 		::close(fd);
 		return true;
-	
+
 	}
 
 	bool remove() const override
@@ -109,16 +109,18 @@ public:
 		struct ::stat buffer;
 		if (::stat(u8path.c_str(), &buffer) != 0)
 			return false;
-		
-    /* We check that st_mtime is a macro here in order to give us confidence
-     * that struct stat has a struct timespec st_mtim member. We need this
-     * check because there are some platforms that claim to be POSIX 2008
-     * compliant but which do not have st_mtim... */
-	#if (PLATFORM_POSIX_VERSION >= 200809L) && defined(st_mtime)
-        return buffer.st_mtim.tv_sec * 1000LL + buffer.st_mtim.tv_nsec / 1000000LL;
-	#else
+
+		/* Linux (glibc/musl) exposes the POSIX.1-2008 struct timespec st_mtim
+		 * member. macOS/BSD instead name it st_mtimespec. The old check here
+		 * relied on st_mtime being defined as a macro, which is not guaranteed
+		 * on Linux, so it was silently falling through to the BSD/macOS-only
+		 * st_mtimespec field and failing to compile. Branch on the platform
+		 * directly instead. */
+		#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 		return buffer.st_mtime * 1000LL + buffer.st_mtimespec.tv_nsec / 1000000LL;
-	#endif
+		#else
+		return buffer.st_mtim.tv_sec * 1000LL + buffer.st_mtim.tv_nsec / 1000000LL;
+		#endif
 	}
 
 	long_t length() const override
@@ -207,7 +209,7 @@ File *File::openResourceDirectory()
 	#ifdef __APPLE__
 	if (_NSGetExecutablePath(path, &length) != 0)
 	{
-	  	// Buffer size is too small.
+		// Buffer size is too small.
 		length = -1;
 	}
 	#else

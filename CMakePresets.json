@@ -74,6 +74,35 @@
       }
     },
     {
+      "name": "linux-debug",
+      "displayName": "Linux Debug (native gcc)",
+      "description": "Native Linux desktop build using gcc/g++ and Ninja from PATH.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-debug",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "MC_LOG_LEVEL": "2"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release (native gcc)",
+      "description": "Optimized native Linux desktop build using gcc/g++ and Ninja from PATH.",
+      "inherits": "linux-debug",
+      "binaryDir": "${sourceDir}/build/linux-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "MC_LOG_LEVEL": "2"
+      }
+    },
+    {
       "name": "ps2-release",
       "displayName": "PS2 Release (mips64r5900el / EE)",
       "description": "PlayStation 2 EE build via the bundled ps2dev toolchain. Assets are read from data/ on the pendrive at runtime; stage them with the ps2-data target.",
@@ -171,6 +200,18 @@
       "name": "gcc32-legacy-release",
       "displayName": "Build GCC 32-bit Legacy Release",
       "configurePreset": "gcc32-legacy-release",
+      "jobs": 0
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Build Linux Debug",
+      "configurePreset": "linux-debug",
+      "jobs": 0
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Build Linux Release",
+      "configurePreset": "linux-release",
       "jobs": 0
     },
     {

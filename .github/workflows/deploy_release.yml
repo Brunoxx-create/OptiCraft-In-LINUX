@@ -47,6 +47,25 @@ jobs:
             OptiCraft-wii.tar.gz \
             --repo "${{ github.repository }}"
 
+  deploy-linux-x64-gcc:
+    name: Deploy Linux x64 GCC
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux x64 GCC artifact
+        uses: dawidd6/action-download-artifact@v24
+        with:
+          workflow: build.yml
+          workflow_conclusion: success
+          name: opticraft-linux-x64-gcc
+
+      - name: Upload to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            OptiCraft-linux-x64-gcc.tar.gz \
+            --repo "${{ github.repository }}"
+
   deploy-windows-x64-gcc:
     name: Deploy Windows x64 GCC
     runs-on: ubuntu-latest

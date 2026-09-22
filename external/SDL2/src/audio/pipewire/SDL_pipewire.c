@@ -590,7 +590,13 @@ static void node_event_info(void *object, const struct pw_node_info *info)
 
         /* Need to parse the parameters to get the sample rate */
         for (i = 0; i < info->n_params; ++i) {
-            pw_node_enum_params(node->proxy, 0, info->params[i].id, 0, 0, NULL);
+            /* Newer pipewire headers (>= 1.x, PW_API_NODE_IMPL) declare this
+             * with a strict struct pw_node* parameter instead of accepting
+             * the generic struct pw_proxy* this node object actually holds.
+             * The proxy IS the node's interface handle; the cast just
+             * satisfies the stricter prototype and matches the fix used in
+             * newer SDL2 releases against modern pipewire. */
+            pw_node_enum_params((struct pw_node *)node->proxy, 0, info->params[i].id, 0, 0, NULL);
         }
 
         hotplug_core_sync(node);

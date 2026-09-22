@@ -168,7 +168,7 @@ find_package(Threads REQUIRED)
 # Build the desktop target from common code plus the PC tree. Foreign console
 # sources are never discovered, so adding a new Wii/PS2 .cpp cannot silently
 # enter a desktop link.
-opticraft_collect_platform_sources(OPTICRAFT_COMMON_SOURCES pc)
+mcbeta_collect_platform_sources(OPTICRAFT_COMMON_SOURCES pc)
 set(OPTICRAFT_MINIZIP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/contrib/minizip/ioapi.c"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/contrib/minizip/unzip.c"
@@ -179,15 +179,15 @@ file(GLOB_RECURSE OPTICRAFT_HEADERS CONFIGURE_DEPENDS
 )
 
 if(WIN32)
-    opticraft_exclude_sources(OPTICRAFT_COMMON_SOURCES "[/\\]pc[/\\]linux[/\\]")
+    mcbeta_exclude_sources(OPTICRAFT_COMMON_SOURCES "[/\\]pc[/\\]linux[/\\]")
 elseif(UNIX)
-    opticraft_exclude_sources(OPTICRAFT_COMMON_SOURCES "[/\\]pc[/\\]win32[/\\]")
+    mcbeta_exclude_sources(OPTICRAFT_COMMON_SOURCES "[/\\]pc[/\\]win32[/\\]")
 else()
     message(FATAL_ERROR "OptiCraft currently supports Windows and Linux only")
 endif()
 
 # Each public platform facade has exactly one implementation in this target.
-opticraft_select_platform_backends(OPTICRAFT_COMMON_SOURCES PC PC PC)
+mcbeta_select_platform_backends(OPTICRAFT_COMMON_SOURCES PC PC PC)
 
 # Unified diagnostic verbosity, the same knob cmake/ps2.cmake and cmake/wii.cmake
 # expose. The desktop target left it undefined, so platform/Log.h fell back to 0
@@ -251,6 +251,12 @@ endif()
 target_include_directories(OptiCraft PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/pc"
+    # Game/world/client sources under src/net/minecraft/src include each other
+    # by bare filename (e.g. "IntCache.h") rather than a net/minecraft/src-
+    # relative path. The Wii and Windows-GCC CI jobs papered over this with an
+    # extra -I on the command line; make it a real part of the target instead
+    # of an external hack so every desktop/console build gets it consistently.
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/net/minecraft/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/stb"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/miniaudio"
     "${CMAKE_CURRENT_SOURCE_DIR}/external/zlib/contrib/minizip"
