@@ -209,6 +209,16 @@ jobs:
             /#endif/a#include "platform/world/StreamingFrameBudget.h"
           }' src/net/minecraft/src/World.cpp
 
+      - name: Patch WorldRenderer.cpp (markDirtyFromLighting / urgentRebuild guards)
+        shell: bash
+        run: |
+          sed -i \
+            -e '/^void WorldRenderer::markDirtyFromLighting()$/i #if defined(WII_PLATFORM) || defined(PS2_PLATFORM) || PLATFORM_PC_LEGACY' \
+            -e '/^void WorldRenderer::setDontDraw()$/i #endif' \
+            -e '/^\turgentRebuild = false;$/i #if defined(WII_PLATFORM) || defined(PS2_PLATFORM) || PLATFORM_PC_LEGACY' \
+            -e '/^\turgentRebuild = false;$/a #endif' \
+            src/net/minecraft/src/WorldRenderer.cpp
+
       - name: Install ccache
         run: choco install ccache -y
         shell: pwsh
