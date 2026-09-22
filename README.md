@@ -36,8 +36,9 @@ issue con el log de consola - ayuda mucho a diagnosticar el problema.
 - Python 3 (solo para empaquetar los assets)
 
 ### Instalación (compilar)
-
+### Adentro de la carpeta contenedora:
 ```bash
+git clone --depth 1 -b SDL2 https://github.com/libsdl-org/SDL_net external/SDL_net
 cmake --preset linux-debug
 cmake --build --preset linux-debug 2>&1 | tee build.log
 ```
